@@ -12,9 +12,11 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "framer-motion": "^12.23.12",
+    "jsbarcode": "^3.12.1",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "next": "15.5.2",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-syntax-highlighter": "^15.6.6"

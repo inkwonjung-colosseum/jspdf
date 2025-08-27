@@ -8,12 +8,21 @@ import {
   ArrowDownOnSquareIcon,
   SparklesIcon
 } from "@heroicons/react/24/outline";
+import CodeEditor from "./CodeEditor";
+import { generateJsPDFCode } from "../utils/codeGenerator";
 
 export default function PDFPreviewPage() {
   const [selectedPdfType, setSelectedPdfType] = useState("pickingSlip");
   const [pdfUrl, setPdfUrl] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [textContent, setTextContent] = useState("");
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [codeOptions, setCodeOptions] = useState({
+    template: 'function',
+    functionName: 'createPickingSlipPDF',
+    exportType: 'export',
+    includeImports: true
+  });
 
   // PDF 타입별 기본 텍스트 내용 
   const getDefaultTextContent = (type) => {
@@ -122,7 +131,7 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
     setTextContent(getDefaultTextContent(type));
   };
 
-  // PDF 생성
+  // PDF 및 코드 생성
   const generatePDF = async () => {
     if (!textContent.trim()) {
       alert('Please enter text content.');
@@ -134,8 +143,9 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
       const { createPickingSlipPDF } = await import("../utils/simplePdfGenerator");
       
       const parsedData = parseTextToData(textContent);
-      const doc = createPickingSlipPDF(parsedData);
       
+      // PDF 생성
+      const doc = createPickingSlipPDF(parsedData);
       const pdfBlob = doc.output("blob");
       const url = URL.createObjectURL(pdfBlob);
       
@@ -145,11 +155,33 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
       }
       
       setPdfUrl(url);
+
+      // jsPDF 코드 생성
+      const jsCode = generateJsPDFCode({
+        ...parsedData,
+        title: 'Picking Slip'
+      }, codeOptions);
+      setGeneratedCode(jsCode);
+
     } catch (error) {
       console.error("PDF generation error:", error);
       alert("An error occurred while generating the PDF.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // 코드 옵션 변경 핸들러
+  const handleCodeOptionsChange = (newOptions) => {
+    setCodeOptions(newOptions);
+    // 현재 파싱된 데이터가 있으면 코드를 재생성
+    if (textContent.trim()) {
+      const parsedData = parseTextToData(textContent);
+      const jsCode = generateJsPDFCode({
+        ...parsedData,
+        title: 'Picking Slip'
+      }, newOptions);
+      setGeneratedCode(jsCode);
     }
   };
 
@@ -177,23 +209,32 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
                 <DocumentTextIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">PDF Generator</h1>
-                <p className="text-sm text-gray-500">Create professional PDF documents with jsPDF</p>
+                <h1 className="text-2xl font-bold text-gray-900">jsPDF 코드 생성기</h1>
+                <p className="text-sm text-gray-500">PDF를 디자인하고 jsPDF 코드를 자동 생성하여 다른 프로젝트에서 바로 사용</p>
               </div>
             </div>
-            <a 
-              href="/jspdf-guide" 
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
-            >
-              <SparklesIcon className="h-4 w-4 mr-2" />
-              Usage Guide
-            </a>
+            <div className="flex space-x-3">
+              <a 
+                href="/template-builder" 
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 transition-colors duration-200"
+              >
+                <CogIcon className="h-4 w-4 mr-2" />
+                비주얼 빌더
+              </a>
+              <a 
+                href="/jspdf-guide" 
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+              >
+                <SparklesIcon className="h-4 w-4 mr-2" />
+                Usage Guide
+              </a>
+            </div>
           </div>
         </div>
       </motion.div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-[100vw] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* 왼쪽 컨트롤 패널 */}
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
@@ -257,12 +298,12 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
                 {isGenerating ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Generating...</span>
+                    <span>생성 중...</span>
                   </>
                 ) : (
                   <>
                     <ArrowDownOnSquareIcon className="h-5 w-5" />
-                    <span>📄 Generate PDF</span>
+                    <span>📄 PDF & 코드 생성</span>
                   </>
                 )}
               </button>
@@ -271,22 +312,23 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
             {/* 사용법 안내 */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
               <div className="text-sm text-blue-800">
-                <strong className="block mb-2">💡 How to use:</strong>
+                <strong className="block mb-2">💡 사용법:</strong>
                 <ul className="space-y-1 text-xs">
-                  <li>• Edit the text directly to modify PDF content</li>
-                  <li>• Click the Generate PDF button to create your document</li>
-                  <li>• Preview and download your generated PDF</li>
+                  <li>• 텍스트를 편집하여 PDF 내용 수정</li>
+                  <li>• Generate PDF 버튼으로 PDF 및 코드 생성</li>
+                  <li>• 가운데에서 PDF 미리보기 확인</li>
+                  <li>• 오른쪽에서 생성된 jsPDF 코드 복사</li>
                 </ul>
               </div>
             </div>
           </motion.div>
 
-          {/* 오른쪽 PDF 미리보기 */}
+          {/* 가운데 PDF 미리보기 */}
           <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="lg:col-span-2"
+            className="xl:col-span-1"
           >
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
@@ -339,6 +381,20 @@ Shipment Time: ${new Date().toLocaleString('en-US')}`;
                 </motion.div>
               )}
             </div>
+          </motion.div>
+
+          {/* 오른쪽 코드 에디터 */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="xl:col-span-1"
+          >
+            <CodeEditor 
+              code={generatedCode}
+              title="Generated jsPDF Code"
+              onOptionsChange={handleCodeOptionsChange}
+            />
           </motion.div>
         </div>
       </div>
